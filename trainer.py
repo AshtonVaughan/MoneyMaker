@@ -8,9 +8,16 @@ import pandas as pd
 from datetime import datetime
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 import config
-from mt5_connector import MT5Connector
 from data_processor import DataProcessor
 from model import ScalpingLSTM, create_model
+
+# MT5 is optional (Windows only, not needed for GPU training)
+try:
+    from mt5_connector import MT5Connector
+    MT5_AVAILABLE = True
+except ImportError:
+    MT5_AVAILABLE = False
+    MT5Connector = None
 
 
 class ModelTrainer:
@@ -30,6 +37,12 @@ class ModelTrainer:
         Returns:
             Tuple of (X_train, y_train, feature_names)
         """
+        if not MT5_AVAILABLE:
+            raise ImportError(
+                "MT5 not available on this system. "
+                "Use train_gpu.py with a CSV file instead, or install MetaTrader5 (Windows only)."
+            )
+        
         print("Connecting to MT5...")
         connector = MT5Connector()
         if not connector.connect():
