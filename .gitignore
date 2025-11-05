@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Model files (too large for GitHub)
+models/*.h5
+models/*.hdf5
+models/*.pkl
+
+# Logs
+logs/
+*.log
+
+# Data files (use Git LFS or cloud storage)
+data/historical/*.h5
+data/historical/*.csv
+data/historical/*.csv.gz
+data/*.h5
+data/*.csv
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backtest results
+backtest_results/*.csv
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
