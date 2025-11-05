@@ -53,8 +53,39 @@ def load_historical_data(data_path: str) -> pd.DataFrame:
     """
     print(f"Loading data from {data_path}...")
     
-    if not os.path.exists(data_path):
-        raise FileNotFoundError(f"Data file not found: {data_path}")
+    # Try multiple possible locations
+    possible_paths = [
+        data_path,  # Original path
+        os.path.join(os.getcwd(), data_path),  # Current directory + path
+        os.path.basename(data_path),  # Just filename in current dir
+        os.path.join("data", "historical", os.path.basename(data_path)),  # Relative path
+    ]
+    
+    actual_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            actual_path = path
+            break
+    
+    if actual_path is None:
+        # List available CSV files in current directory
+        csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
+        h5_files = [f for f in os.listdir('.') if f.endswith(('.h5', '.hdf5'))]
+        
+        error_msg = f"Data file not found: {data_path}\n"
+        error_msg += f"Tried paths: {possible_paths}\n"
+        if csv_files:
+            error_msg += f"\nAvailable CSV files in current directory:\n"
+            for f in csv_files[:10]:
+                error_msg += f"  - {f}\n"
+        if h5_files:
+            error_msg += f"\nAvailable HDF5 files in current directory:\n"
+            for f in h5_files[:10]:
+                error_msg += f"  - {f}\n"
+        raise FileNotFoundError(error_msg)
+    
+    data_path = actual_path
+    print(f"Found file at: {data_path}")
     
     if data_path.endswith('.h5') or data_path.endswith('.hdf5'):
         try:
