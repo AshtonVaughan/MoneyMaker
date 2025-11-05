@@ -30,10 +30,16 @@ def setup_gpu():
             print("GPU memory growth enabled")
         except RuntimeError as e:
             print(f"GPU configuration error: {e}")
+            return False
         
-        # Enable mixed precision for faster training
-        tf.keras.mixed_precision.set_global_policy('mixed_float16')
-        print("Mixed precision training enabled (FP16)")
+        # Try to enable mixed precision, but fallback if it fails
+        try:
+            tf.keras.mixed_precision.set_global_policy('mixed_float16')
+            print("Mixed precision training enabled (FP16)")
+        except Exception as e:
+            print(f"Mixed precision failed: {e}")
+            print("Using FP32 instead")
+            tf.keras.mixed_precision.set_global_policy('float32')
         
         return True
     else:
@@ -107,7 +113,8 @@ def train_on_large_dataset(
     data_path: str,
     epochs: int = 100,
     batch_size: int = 128,  # Larger batch for GPU
-    validation_split: float = 0.2
+    validation_split: float = 0.2,
+    force_cpu: bool = False
 ):
     """
     Train model on large historical dataset
@@ -117,21 +124,46 @@ def train_on_large_dataset(
         epochs: Number of training epochs
         batch_size: Batch size (larger for GPU)
         validation_split: Validation split ratio
+        force_cpu: Force CPU usage (for CUDA compatibility issues)
     """
     print("="*70)
     print("GPU TRAINING ON LARGE DATASET")
     print("="*70)
     
-    # Setup GPU
-    has_gpu = setup_gpu()
+    # Force CPU if requested or if GPU setup fails
+    if force_cpu:
+        print("\nForcing CPU usage...")
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+        has_gpu = False
+    else:
+        # Setup GPU
+        try:
+            has_gpu = setup_gpu()
+            # Test GPU with a simple operation
+            if has_gpu:
+                try:
+                    with tf.device('/GPU:0'):
+                        test_tensor = tf.constant([1.0])
+                        _ = test_tensor + 1.0
+                    print("GPU test passed")
+                except Exception as e:
+                    print(f"GPU test failed: {e}")
+                    print("Falling back to CPU...")
+                    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+                    has_gpu = False
+        except Exception as e:
+            print(f"GPU setup failed: {e}")
+            print("Falling back to CPU...")
+            os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+            has_gpu = False
     
     if has_gpu:
         print("\nGPU Configuration:")
         print(f"  Batch size: {batch_size} (optimized for GPU)")
-        print(f"  Mixed precision: Enabled")
     else:
         print("\nCPU Configuration:")
-        print(f"  Batch size: {batch_size}")
+        print(f"  Batch size: {min(batch_size, 64)} (reduced for CPU)")
+        batch_size = min(batch_size, 64)  # Smaller batch for CPU
     
     # Load data
     print("\nLoading historical data...")
