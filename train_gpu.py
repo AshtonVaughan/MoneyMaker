@@ -5,6 +5,13 @@ This script loads data from HDF5 files and trains efficiently on GPU
 
 import os
 import sys
+
+# Set CUDA_VISIBLE_DEVICES BEFORE importing TensorFlow
+# This allows forcing CPU if needed
+if '--cpu' in sys.argv or os.environ.get('FORCE_CPU', '').lower() == 'true':
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    print("CPU mode forced via command line or environment variable")
+
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -133,7 +140,12 @@ def train_on_large_dataset(
     # Force CPU if requested or if GPU setup fails
     if force_cpu:
         print("\nForcing CPU usage...")
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+        # CUDA_VISIBLE_DEVICES should already be set at import time
+        if 'CUDA_VISIBLE_DEVICES' not in os.environ or os.environ['CUDA_VISIBLE_DEVICES'] != '-1':
+            os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+            # Need to reload TensorFlow for change to take effect
+            import importlib
+            importlib.reload(tf)
         has_gpu = False
     else:
         # Setup GPU
@@ -149,12 +161,16 @@ def train_on_large_dataset(
                 except Exception as e:
                     print(f"GPU test failed: {e}")
                     print("Falling back to CPU...")
+                    # Restart Python process would be needed, but we can force CPU devices
                     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+                    # Force all operations to CPU
+                    tf.config.set_visible_devices([], 'GPU')
                     has_gpu = False
         except Exception as e:
             print(f"GPU setup failed: {e}")
             print("Falling back to CPU...")
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+            tf.config.set_visible_devices([], 'GPU')
             has_gpu = False
     
     if has_gpu:

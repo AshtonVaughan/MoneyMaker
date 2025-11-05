@@ -99,11 +99,23 @@ class ModelTrainer:
         
         # Create model
         print(f"Building model with input shape: {X.shape[1:]}")
-        self.model = create_model(
-            sequence_length=X.shape[1],
-            num_features=num_features
-        )
-        model = self.model.get_model()
+        
+        # Check if GPU is disabled and force CPU for model building
+        import os
+        if os.environ.get('CUDA_VISIBLE_DEVICES') == '-1':
+            import tensorflow as tf
+            with tf.device('/CPU:0'):
+                self.model = create_model(
+                    sequence_length=X.shape[1],
+                    num_features=num_features
+                )
+                model = self.model.get_model()
+        else:
+            self.model = create_model(
+                sequence_length=X.shape[1],
+                num_features=num_features
+            )
+            model = self.model.get_model()
         
         # Create save directory
         if save_path is None:
